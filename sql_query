@@ -1,0 +1,83 @@
+SELECT
+    player,
+    SUM(events) AS tot_events_played,
+    SUM(earnings) AS tot_earnings,
+    COUNT(YEAR) AS years_active,
+    CAST((SUM(events)/ COUNT(year)) AS INT64) AS events_per_year,
+    ROUND((SUM(earnings) / SUM(events)), 2) AS earnings_per_event,
+    ROUND(((SUM(fairways_hit) / SUM(fairways_attempted)) * 100), 1)  AS driving_accuracy_percent,
+    ROUND((SUM(driving_distance) / SUM(measured_driving_distance_instances)), 1) AS avg_driving_distance,
+    ROUND(((SUM(greens_in_reg) / SUM(greens_attempted)) * 100), 1)  AS gir_percent,
+    ROUND((SUM(putts) / SUM(putting_rounds)), 1) AS putts_per_round,
+    ROUND(((SUM(scrambling_up_downs) / SUM(scrambling_chances)) * 100), 1)  AS scrambling_percent,
+    ROUND((SUM(strokes) / SUM(scoring_rounds)), 2) AS scoring_average
+FROM
+    (SELECT
+        money_made.player AS player,
+        money_made.year AS year,
+        money_made.events AS events,
+        money_made.earnings AS earnings,
+        driving_accuracy.season_fairways_hit AS fairways_hit,
+        driving_accuracy.season_fairways_attempted AS fairways_attempted,
+        driving_distance.season_total_driving_distance AS driving_distance,
+        driving_distance.season_drives AS measured_driving_distance_instances,
+        greens_in_regulation.greens_in_reg AS greens_in_reg,
+        greens_in_regulation.holes_played AS greens_attempted,
+        putting.season_putts AS putts,
+        putting.sesaon_rounds AS putting_rounds,
+        scoring.season_strokes AS strokes,
+        scoring.season_rounds AS scoring_rounds,
+        scrambling.successful_up_and_down AS scrambling_up_downs,
+        scrambling.up_and_down_chances AS scrambling_chances,
+        money_made.victories AS wins
+    FROM
+        pga_stats.money_made
+    LEFT JOIN
+        pga_stats.driving_accuracy
+            ON money_made.player = driving_accuracy.player
+            AND money_made.year = driving_accuracy.year
+    LEFT JOIN
+        pga_stats.driving_distance
+            ON money_made.player = driving_distance.player
+            AND money_made.year = driving_distance.year
+    LEFT JOIN
+        pga_stats.greens_in_regulation
+            ON money_made.player = greens_in_regulation.player
+            AND money_made.year = greens_in_regulation.year
+    LEFT JOIN
+        pga_stats.putting 
+            ON money_made.player = putting.player
+            AND money_made.year = putting.year
+    LEFT JOIN
+        pga_stats.scoring
+            ON money_made.player = scoring.player
+            AND money_made.year = scoring.year
+    LEFT JOIN
+        pga_stats.scrambling
+            ON money_made.player = scrambling.player
+            AND money_made.year = scrambling.year
+    GROUP BY
+        year,
+        player,
+        earnings,
+        events,
+        fairways_hit,
+        fairways_attempted,
+        driving_distance,
+        measured_driving_distance_instances,
+        greens_in_reg,
+        holes_played,
+        putts,
+        putting_rounds,
+        strokes,
+        scoring_rounds,
+        scrambling_up_downs,
+        scrambling_chances,
+        wins
+)
+GROUP BY
+    player
+HAVING
+    tot_events_played / COUNT(year) >= 10    
+ORDER BY
+    earnings_per_event DESC
